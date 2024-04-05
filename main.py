@@ -84,6 +84,17 @@ def on_drop(event):
             print(f"Skipping unsupported file: {f}")
             continue
         try:
+            filename = os.path.basename(f.lower())
+            file_ext = filename.split('.')[-1]
+            if file_ext == 'aac':
+                file_ext = 'm4a'
+            file_type = AudioType(file_ext)
+            if file_type == target_audio_type:
+                continue
+        except ValueError:
+            # ignore
+            print(f"Unable to determine file type for {f}")
+        try:
             output_file_path = convert_audio(f, delete_original)
             listbox.insert(END, output_file_path)
             print(f"Converted {f} to {output_file_path}")
@@ -122,8 +133,6 @@ if __name__ == "__main__":
     delete_var = IntVar(value=0)  # Default is not to delete
     delete_checkbox = Checkbutton(options_frame, text="转换后删除源文件", variable=delete_var)
     delete_checkbox.pack(side="left")
-
-
 
     # Frame for the audio format selection
     format_frame = Frame(root)
