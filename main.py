@@ -29,9 +29,9 @@ def get_bitrate_command(audio_type):
     if audio_type == AudioType.MP3:
         return '-q:a 0'
     if audio_type == AudioType.M4A:
-        return '-q:a 4'
+        return '-b:a 400k'
     if audio_type == AudioType.OGG:
-        return '-q:a 1'
+        return '-b:a 320k'
     return ''
 
 
@@ -40,14 +40,16 @@ def convert_audio(audio_file_path, target_audio_type, delete_original):
     dir_name = os.path.dirname(audio_file_path)
     base_name = os.path.basename(audio_file_path)
     file_name, file_ext = os.path.splitext(base_name)
+    counter = 1
 
     # Define the output WAV file path
     output_file_path = os.path.join(dir_name, f'{file_name}.{target_audio_type.value}')
+    while os.path.exists(output_file_path):
+        output_file_path = os.path.join(dir_name, f'{file_name}_{counter}.{target_audio_type.value}')
+        counter += 1
     convert_command = get_convert_command(target_audio_type)
     bitrate_command = get_bitrate_command(target_audio_type)
 
-    # Determine the format from the file extension
-    # file_format = file_ext.lower().replace('.', '')
     command = ['ffmpeg', '-i', audio_file_path, '-vn', '-acodec', convert_command, '-ar', '44100', '-ac', '2']
     command += bitrate_command.split()
     command.append(output_file_path)
@@ -93,8 +95,8 @@ def on_drop(event):
 if __name__ == "__main__":
     # Create the main window
     root = TkinterDnD.Tk()
-    root.title('Audio to WAV Converter')
-    root.geometry('400x300')
+    root.title('音频批量转换器')
+    root.geometry('650x500')
 
     # Create a listbox to display converted files
     listbox = Listbox(root)
