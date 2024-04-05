@@ -1,6 +1,6 @@
 import os, sys, subprocess
 from enum import Enum
-from tkinter import Tk, Listbox, END, Checkbutton, IntVar, Radiobutton, StringVar, Frame, Label
+from tkinter import Tk, Button, Listbox, END, Checkbutton, IntVar, Radiobutton, StringVar, Frame, Label
 from tkinterdnd2 import DND_FILES, TkinterDnD
 
 
@@ -91,6 +91,10 @@ def on_drop(event):
             print(f"Error converting {f}: {e}")
 
 
+def clear_listbox():
+    listbox.delete(0, END)
+
+
 if __name__ == "__main__":
     # Create the main window
     root = TkinterDnD.Tk()
@@ -106,14 +110,23 @@ if __name__ == "__main__":
     listbox = Listbox(conversion_frame)
     listbox.pack(fill="both", expand=True)
 
+    # Frame to hold options horizontally
+    options_frame = Frame(conversion_frame)
+    options_frame.pack()
+
+    # Button to clear the listbox content
+    clear_button = Button(options_frame, text="清除列表", command=clear_listbox)
+    clear_button.pack(side="left")
+
     # Checkbox to decide whether to delete the original files
     delete_var = IntVar(value=0)  # Default is not to delete
-    delete_checkbox = Checkbutton(conversion_frame, text="转换后删除源文件", variable=delete_var)
-    delete_checkbox.pack()
+    delete_checkbox = Checkbutton(options_frame, text="转换后删除源文件", variable=delete_var)
+    delete_checkbox.pack(side="left")
+
+
 
     # Frame for the audio format selection
     format_frame = Frame(root)
-
     format_frame.pack(fill="both", expand=True, side="right")
 
     # Label for the audio format selection
