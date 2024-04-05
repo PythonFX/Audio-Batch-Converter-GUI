@@ -1,6 +1,6 @@
 import os, sys, subprocess
 from enum import Enum
-from tkinter import Tk, Listbox, END, Checkbutton, IntVar
+from tkinter import Tk, Listbox, END, Checkbutton, IntVar, Radiobutton, StringVar, Frame, Label
 from tkinterdnd2 import DND_FILES, TkinterDnD
 
 
@@ -35,7 +35,7 @@ def get_bitrate_command(audio_type):
     return ''
 
 
-def convert_audio(audio_file_path, target_audio_type, delete_original):
+def convert_audio(audio_file_path, delete_original):
     # Parse the file path to separate the directory and filename
     dir_name = os.path.dirname(audio_file_path)
     base_name = os.path.basename(audio_file_path)
@@ -84,8 +84,7 @@ def on_drop(event):
             print(f"Skipping unsupported file: {f}")
             continue
         try:
-            target_audio_type = AudioType.M4A
-            output_file_path = convert_audio(f, target_audio_type, delete_original)
+            output_file_path = convert_audio(f, delete_original)
             listbox.insert(END, output_file_path)
             print(f"Converted {f} to {output_file_path}")
         except Exception as e:
@@ -95,17 +94,44 @@ def on_drop(event):
 if __name__ == "__main__":
     # Create the main window
     root = TkinterDnD.Tk()
-    root.title('音频批量转换器')
-    root.geometry('650x500')
+    root.title('音频批量转换')
+    root.geometry('600x500')
+    target_audio_type = AudioType.WAV
+
+    # Frame for the conversion list
+    conversion_frame = Frame(root)
+    conversion_frame.pack(fill="both", expand=True, side="left")
 
     # Create a listbox to display converted files
-    listbox = Listbox(root)
+    listbox = Listbox(conversion_frame)
     listbox.pack(fill="both", expand=True)
 
     # Checkbox to decide whether to delete the original files
     delete_var = IntVar(value=0)  # Default is not to delete
-    delete_checkbox = Checkbutton(root, text="Delete original files after conversion", variable=delete_var)
+    delete_checkbox = Checkbutton(conversion_frame, text="转换后删除源文件", variable=delete_var)
     delete_checkbox.pack()
+
+    # Frame for the audio format selection
+    format_frame = Frame(root)
+
+    format_frame.pack(fill="both", expand=True, side="right")
+
+    # Label for the audio format selection
+    format_label = Label(format_frame, text="选择目标音频格式：")
+    format_label.pack(anchor='w')
+
+    # Variable to store the selected audio format
+    selected_audio_type = StringVar(value=AudioType.WAV.value)  # Default selection
+
+    # Function to update the selected audio type
+    def update_selected_audio_type():
+        global target_audio_type
+        target_audio_type = AudioType(selected_audio_type.get())
+
+    # Radio buttons for selecting the target audio format
+    for audio_type in AudioType:
+        Radiobutton(format_frame, text=audio_type.value.upper(), variable=selected_audio_type,
+                    value=audio_type.value, command=update_selected_audio_type).pack(anchor="w")
 
     # Enable drag-and-drop on the listbox
     root.drop_target_register(DND_FILES)
