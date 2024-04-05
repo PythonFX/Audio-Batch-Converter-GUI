@@ -1,5 +1,6 @@
 import os, sys, subprocess
 from enum import Enum
+from concurrent.futures import ThreadPoolExecutor
 from tkinter import Tk, Button, Listbox, END, Checkbutton, IntVar, Radiobutton, StringVar, Frame, Label
 from tkinterdnd2 import DND_FILES, TkinterDnD
 
@@ -35,25 +36,23 @@ def get_bitrate_command(audio_type):
     return ''
 
 
-def convert_audio(audio_file_path, delete_original):
-    # Parse the file path to separate the directory and filename
+def get_output_path(audio_file_path):
     dir_name = os.path.dirname(audio_file_path)
     base_name = os.path.basename(audio_file_path)
     file_name, file_ext = os.path.splitext(base_name)
     counter = 1
-
-    # Define the output WAV file path
     output_file_path = os.path.join(dir_name, f'{file_name}.{target_audio_type.value}')
     while os.path.exists(output_file_path):
         output_file_path = os.path.join(dir_name, f'{file_name}_{counter}.{target_audio_type.value}')
         counter += 1
+    return output_file_path
+
+def convert_audio(audio_file_path, output_file_path, delete_original):
     convert_command = get_convert_command(target_audio_type)
     bitrate_command = get_bitrate_command(target_audio_type)
-
     command = ['ffmpeg', '-i', audio_file_path, '-vn', '-acodec', convert_command, '-ar', '44100', '-ac', '2']
     command += bitrate_command.split()
     command.append(output_file_path)
-
     if sys.platform == "win32":
         creation_flags = subprocess.CREATE_NO_WINDOW
     else:
@@ -79,27 +78,39 @@ def on_drop(event):
     # event.data contains the paths to the dropped files
     files = root.tk.splitlist(event.data)
     delete_original = delete_var.get()  # Check the state of the checkbox
-    for f in files:
-        if not f.lower().endswith(('.wav', '.flac', '.ape', '.m4a', '.aac', '.mp3', '.ogg')):
-            print(f"Skipping unsupported file: {f}")
-            continue
-        try:
-            filename = os.path.basename(f.lower())
-            file_ext = filename.split('.')[-1]
-            if file_ext == 'aac':
-                file_ext = 'm4a'
-            file_type = AudioType(file_ext)
-            if file_type == target_audio_type:
+
+    # Use ThreadPoolExecutor to convert audio files in parallel
+    with ThreadPoolExecutor() as executor:
+        futures = []
+        output_paths = []
+        for file in files:
+            if not file.lower().endswith(('.wav', '.flac', '.ape', '.m4a', '.aac', '.mp3', '.ogg')):
+                print(f"Skipping unsupported file: {file}")
                 continue
-        except ValueError:
-            # ignore
-            print(f"Unable to determine file type for {f}")
-        try:
-            output_file_path = convert_audio(f, delete_original)
-            listbox.insert(END, output_file_path)
-            print(f"Converted {f} to {output_file_path}")
-        except Exception as e:
-            print(f"Error converting {f}: {e}")
+            try:
+                filename = os.path.basename(file.lower())
+                file_ext = filename.split('.')[-1]
+                if file_ext == 'aac':
+                    file_ext = 'm4a'
+                file_type = AudioType(file_ext)
+                if file_type == target_audio_type:
+                    continue
+            except ValueError:
+                # ignore
+                print(f"Unable to determine file type for {file}")
+
+            output_path = get_output_path(file)
+            future = executor.submit(convert_audio, file, output_path, delete_original)
+            futures.append(future)
+            output_paths.append(output_path)
+
+        for future, output_path in zip(futures, output_paths):
+            try:
+                future.result()  # This will raise exceptions if any occurred during conversion
+                listbox.insert(END, output_path)
+                print(f"Converted {file} to {output_path}")
+            except Exception as e:
+                print(f"Error during conversion: {e}")
 
 
 def clear_listbox():
